@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>DataTable Example</title>
+	<title>DataTable</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
 	<!-- Bootstrap CSS -->
@@ -10,6 +10,9 @@
 
 	<!-- DataTables CSS -->
 	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+
+	<!-- DataTables Buttons CSS -->
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.7.1/css/buttons.dataTables.min.css">
 
 	<!-- jQuery library -->
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -20,6 +23,12 @@
 	<!-- Bootstrap JS -->
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
 
+	<!-- DataTables -->
+	<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+
+	<!-- DataTables Buttons -->
+	<script src="https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js"></script>
+	<script src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js"></script>
 </head>
 
 <body>
@@ -29,36 +38,161 @@
 				<table id="example" class="display" style="width:100%">
 					<thead>
 						<tr>
+							<th>UserID</th>
 							<th>ID</th>
-							<th>Name</th>
-							<th>Username</th>
-							<th>Email</th>
-							<th>Phone</th>
+							<th>Title</th>
+							<th>Completed</th>
+							<th>Incompleted</th>
 						</tr>
 					</thead>
 				</table>
+				<div class="dataTables_buttons" id="button_info">
+					<button class="btn btn-success" id="completedButton">Completed</button>
+					<button class="btn btn-danger" id="incompletedButton">Incompleted</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- Custom Popup -->
+	<div class="modal fade" id="taskPopup" tabindex="-1" role="dialog" aria-labelledby="taskPopupLabel"
+		aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="taskPopupLabel">Task List</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+					<div class="task-list" id="taskList"></div>
+					<div class="pagination-container" id="paginationContainer">
+						<nav aria-label="Page navigation">
+							<ul class="pagination" id="pagination"></ul>
+						</nav>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+				</div>
 			</div>
 		</div>
 	</div>
 
+	<script type="text/javascript">
+		$(document).ready(function () {
+			var table = $('#example').DataTable({
+				"ajax": {
+					"url": "https://jsonplaceholder.typicode.com/todos",
+					"dataSrc": ""
+				},
+				"columns": [
+					{ "data": "userId" },
+					{ "data": "id" },
+					{ "data": "title" },
+					{
+						"data": "completed",
+						"render": function (data) {
+							return data ? "true" : "";
+						}
+					},
+					{
+						"data": "completed",
+						"render": function (data) {
+							return data ? "true" : "false";
+						}
+					}
+				]
+			});
+
+			// Button event handlers
+			$("#completedButton").click(function () {
+				$.ajax({
+					url: "https://jsonplaceholder.typicode.com/todos?completed=true",
+					method: "GET",
+					success: function (response) {
+						showPopup(response);
+					},
+					error: function (xhr, status, error) {
+						console.log(error);
+					}
+				});
+			});
+
+			$("#incompletedButton").click(function () {
+				$.ajax({
+					url: "https://jsonplaceholder.typicode.com/todos?completed=false",
+					method: "GET",
+					success: function (response) {
+						showPopup(response);
+					},
+					error: function (xhr, status, error) {
+						console.log(error);
+					}
+				});
+			});
+
+			function showPopup(tasks) {
+				var taskList = $('#taskList');
+				taskList.empty();
+
+				if (Array.isArray(tasks) && tasks.length > 0) {
+					var pageSize = 10;
+					var pageCount = Math.ceil(tasks.length / pageSize);
+
+					var currentPage = 1;
+					showPage(currentPage);
+
+					function showPage(page) {
+						taskList.empty();
+
+						var startIndex = (page - 1) * pageSize;
+						var endIndex = Math.min(startIndex + pageSize, tasks.length);
+
+						for (var i = startIndex; i < endIndex; i++) {
+							var task = tasks[i];
+							taskList.append('<p>UserID: ' + task.userId + '</p>');
+							taskList.append('<p>ID: ' + task.id + '</p>');
+							taskList.append('<p>Title: ' + task.title + '</p>');
+							taskList.append('<p>Completed: ' + task.completed + '</p>');
+							taskList.append('<hr>');
+						}
+
+						updatePagination(page);
+					}
+
+					function updatePagination(currentPage) {
+						var pagination = $('#pagination');
+						pagination.empty();
+
+						if (pageCount > 1) {
+							var prevPage = currentPage - 1;
+							var nextPage = currentPage + 1;
+
+							pagination.append('<li class="page-item ' + (currentPage === 1 ? 'disabled' : '') + '"><a class="page-link" href="#" data-page="' + prevPage + '">Previous</a></li>');
+
+							for (var i = 1; i <= pageCount; i++) {
+								pagination.append('<li class="page-item ' + (i === currentPage ? 'active' : '') + '"><a class="page-link" href="#" data-page="' + i + '">' + i + '</a></li>');
+							}
+
+							pagination.append('<li class="page-item ' + (currentPage === pageCount ? 'disabled' : '') + '"><a class="page-link" href="#" data-page="' + nextPage + '">Next</a></li>');
+						}
+					}
+
+					$('#pagination').on('click', 'a', function (e) {
+						e.preventDefault();
+						var page = $(this).data('page');
+						showPage(page);
+					});
+				} else {
+					taskList.append('<p>No tasks found.</p>');
+				}
+
+				$('#taskPopup').modal('show');
+			}
+		});
+	</script>
 </body>
 
 </html>
 
-<script type="text/javascript">
-	$(document).ready(function () {
-		$('#example').DataTable({
-			"ajax": {
-				"url": "https://jsonplaceholder.typicode.com/users",
-				"dataSrc": ""
-			},
-			"columns": [
-				{ "data": "id" },
-				{ "data": "name" },
-				{ "data": "username" },
-				{ "data": "email" },
-				{ "data": "phone" },
-			]
-		});
-	});
-</script>
